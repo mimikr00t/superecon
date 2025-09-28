@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🔥 ULTIMATE RECON TOOL - All-in-One Reconnaissance Suite
+🔥 SUPERECON - ULTIMATE RECON TOOL - All-in-One Reconnaissance Suite
 Author: Security Researcher
 Version: 2.0
 Description: Comprehensive reconnaissance tool that combines multiple techniques
@@ -73,9 +73,9 @@ class UltimateReconTool:
     def banner(self):
         print("""
 ╔════════════════════════════════════════════════════════════════╗
-║                   🔥 ULTIMATE RECON TOOL                      ║
-║                     All-in-One Reconnaissance                 ║
-║                         Version 2.0                           ║
+║              🔥 SEPERECON -ULTIMATE RECON TOOL                 ║
+║                   All-in-One Reconnaissance                    ║
+║                         Version 2.0                            ║
 ╚════════════════════════════════════════════════════════════════╝
         """)
         print(f"[*] Target: {self.target}")
