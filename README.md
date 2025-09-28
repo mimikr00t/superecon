@@ -46,7 +46,7 @@ Use a table or tree:
 ### 🔐 Security & Ethics Note
 Since this is a red team tool, include a disclaimer:
 ```markdown
-> ⚠️ **Ethical Use Only**: This tool is intended for authorized security assessments and educational purposes. Use responsibly and within legal boundaries.
+> ⚠️ Ethical Use Only: This tool is intended for authorized security assessments and educational purposes. Use responsibly and within legal boundaries.
 ```
 
 ### 📦 GitHub Topics
