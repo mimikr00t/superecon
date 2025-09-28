@@ -6,7 +6,12 @@
 
 ### 🚀 Installation
 ```bash
-pip install requests whois dnspython beautifulsoup4 urllib3
+git clone https://github.com/mimikr00t/superecon.git
+cd superecon
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 🧪 Usage Examples
