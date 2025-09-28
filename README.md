@@ -1,6 +1,6 @@
 ### 📌 Project Title & Tagline
 ```markdown
-# 🛡️ superecon - Ultimate Recon
+🛡️ SUPERECON - Ultimate Recon
 Comprehensive Reconnaissance & Intelligence Toolkit for Red Teamers and Security Analysts
 ```
 
