@@ -1,7 +1,7 @@
 ### 📌 Project Title & Tagline
 ```markdown
 # 🛡️ superecon - Ultimate Recon
-**Comprehensive Reconnaissance & Intelligence Toolkit for Red Teamers and Security Analysts**
+Comprehensive Reconnaissance & Intelligence Toolkit for Red Teamers and Security Analysts
 ```
 
 ### 🚀 Installation
